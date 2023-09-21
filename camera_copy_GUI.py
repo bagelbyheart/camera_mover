@@ -11,7 +11,7 @@ import time
 import math
 import wx
 
-version = '0.0.1'
+version = '1.0.1'
 global dry_run
 
 
@@ -79,23 +79,29 @@ def path_cleaner(in_str):
     return (in_str)
 
 
-def image_listing2(directory):
+def image_listing2(directory, frame):
     listing = []
     for p, d, f in os.walk(directory):
         for file in f:
+            wx.Yield()
             if re.match(".*(JP|jp)((eg|EG)|G|g)$", file):
                 full_path = os.path.join(p, file)
                 listing.append(full_path)
+                process_out = (f"Enumerating: {len(listing)}")
+                frame.sts_details.SetLabel(process_out)
     return (listing)
 
 
 def exif_parse2(file_content):
-    exif_object = exif.Image(file_content)
-    if exif_object.has_exif:
-        with HiddenPrints():
-            exif_dict = exif_object.get_all()
-        return (exif_dict)
-    else:
+    try:
+        exif_object = exif.Image(file_content)
+        if exif_object.has_exif:
+            with HiddenPrints():
+                exif_dict = exif_object.get_all()
+            return (exif_dict)
+        else:
+            return (1)
+    except ValueError:
         return (1)
 
 
@@ -160,9 +166,9 @@ def action_parser(image, out_name, destination, destructive, dry_run):
     dry_name = os.path.join(destination, "camera_copy.csv")
     full_name = os.path.join(destination, out_name)
     if dry_run:
-        with open(dry_name, "+a") as out_file:
+        with open(dry_name, "+a", encoding="utf-8") as out_file:
             if "DUP of" in out_name:
-                out_file.write(f'"{dup_action}","{image}"\n')
+                out_file.write(f'"{dup_action}","{image}","{out_name}"\n')
             else:
                 out_file.write(f'"{src_action}","{image}","{full_name}"\n')
     else:
@@ -184,9 +190,11 @@ def list_review(image_list, check_dup, destination, destructive, dry, frame):
     dup_count = 0
     item_total = len(image_list)
     for image in image_list:
+        # print(image)
         item_count += 1
         percent = math.floor((item_count / item_total) * 100)
-        process_out = (f"Processing: {item_count} of {item_total} ({percent}%)\r")
+        process_out = (f"Processing: {item_count} of",
+                       f"{item_total} ({percent}%)\r")
         frame.sts_details.SetLabel(process_out)
         wx.Yield()
         with open(image, "rb") as image_handle:
@@ -224,10 +232,10 @@ def list_review(image_list, check_dup, destination, destructive, dry, frame):
 
 
 def camera_copy(src, dst, frame, dup=False, destructive=False, dry_run=True):
-    images = image_listing2(src)
+    images = image_listing2(src, frame)
     if dry_run:
         dry_name = os.path.join(dst, "camera_copy.csv")
-        with open(dry_name, "w") as out_file:
+        with open(dry_name, "w", encoding="utf-8") as out_file:
             out_file.write(f'"action","source","destination"\n')
     list_counts = list_review(images, dup, dst, destructive, dry_run, frame)
     return (list_counts)
@@ -258,7 +266,7 @@ class MainFrame(wx.Frame):
         self.chk_dryr = wx.CheckBox(panel, -1, label="Dry Run")
         # status interface
         # self.sts_box = wx.StaticBox(panel, -1, "Status:", size=(380, 80))
-        self.sts_details = wx.StaticText(panel, -1, "Ready", size=(380,20))
+        self.sts_details = wx.StaticText(panel, -1, "Ready", size=(380, 20))
         # confirmation interfaces
         self.btn_okay = wx.Button(panel, -1, "Copy")
         self.btn_okay.Bind(wx.EVT_BUTTON, self.on_okay)
@@ -347,7 +355,8 @@ class MainFrame(wx.Frame):
                   f'Duplicates Skipped: {camera_results[1]}\n'
                   f'Files "Moved": {camera_results[2]}\n')
         wx.MessageBox(output, "Results", wx.OK | wx.ICON_INFORMATION)
-        process_out = (f"Processed: {camera_results[0]} of {camera_results[0]} (100%)\r")
+        process_out = (f"Processed: {camera_results[0]} of "
+                       f"{camera_results[0]} (100%)\r")
         self.sts_details.SetLabel(process_out)
         self.toggleUI()
 
@@ -360,7 +369,7 @@ def main():
     win_styles = wx.DEFAULT_DIALOG_STYLE
     app = wx.App(False)
     frame = MainFrame(None, size=(400, 215), style=win_styles, title=win_title)
-    #frame.SetIcon(wx.Icon("travellers.ico"))
+    # frame.SetIcon(wx.Icon("travellers.ico"))
     frame.Show()
     app.MainLoop()
 
