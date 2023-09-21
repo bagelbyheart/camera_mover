@@ -11,7 +11,7 @@ import time
 import math
 import wx
 
-version = '1.0.1'
+version = '1.0.2'
 global dry_run
 
 
@@ -193,7 +193,7 @@ def list_review(image_list, check_dup, destination, destructive, dry, frame):
         # print(image)
         item_count += 1
         percent = math.floor((item_count / item_total) * 100)
-        process_out = (f"Processing: {item_count} of",
+        process_out = (f"Processing: {item_count} of "
                        f"{item_total} ({percent}%)\r")
         frame.sts_details.SetLabel(process_out)
         wx.Yield()
