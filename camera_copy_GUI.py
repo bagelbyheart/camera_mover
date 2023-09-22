@@ -369,6 +369,12 @@ def main():
     win_styles = wx.DEFAULT_DIALOG_STYLE
     app = wx.App(False)
     frame = MainFrame(None, size=(400, 215), style=win_styles, title=win_title)
+    # this is going to be replaced with some base64 tomfoolery
+    # 1. store the icon as a giant base64 string
+    # 2. decode that to a temp file
+    # 3. read that temp file below
+    # 4. then delete it
+    # for now, no icon.
     # frame.SetIcon(wx.Icon("travellers.ico"))
     frame.Show()
     app.MainLoop()
