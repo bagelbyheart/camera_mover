@@ -10,9 +10,12 @@ import exif
 import time
 import math
 import wx
+from pprint import pformat
 
-version = '1.0.2'
+version = '1.0.3'
 global dry_run
+
+exceptions = {}
 
 
 strftime = time.strftime
@@ -92,31 +95,54 @@ def image_listing2(directory, frame):
     return (listing)
 
 
-def exif_parse2(file_content):
+def get_full_class_name(obj):
+    # source: https://stackoverflow.com/a/58045927/3957324
+    module = obj.__class__.__module__
+    if module is None or module == str.__class__.__module__:
+        return obj.__class__.__name__
+    return module + '.' + obj.__class__.__name__
+
+
+def add_image_exception(image, exception):
+    try:
+        exceptions[exception]['count'] += 1
+        exceptions[exception]['files'].append(image)
+    except KeyError:
+        exceptions[exception] = {}
+        exceptions[exception]['count'] = 1
+        exceptions[exception]['files'] = []
+        exceptions[exception]['files'].append(image)
+
+
+def exif_parse2(file_content, image):
     try:
         exif_object = exif.Image(file_content)
-        if exif_object.has_exif:
-            with HiddenPrints():
-                exif_dict = exif_object.get_all()
-            return (exif_dict)
-        else:
-            return (1)
-    except ValueError:
+    except Exception as e:
+        add_image_exception(image, get_full_class_name(e))
+        return (1)
+    if exif_object.has_exif:
+        with HiddenPrints():
+            exif_dict = exif_object.get_all()
+        return (exif_dict)
+    else:
         return (1)
 
 
 def name_gen2(image, exif_dict):
     try:
         make = exif_dict['make']
-    except:
+    except Exception as e:
+        add_image_exception(image, get_full_class_name(e))
         make = "brand"
     try:
         model = exif_dict['model']
-    except:
+    except Exception as e:
+        add_image_exception(image, get_full_class_name(e))
         model = "camera"
     try:
         date = exif_dict['datetime'].replace(":", "-").replace(" ", "T")
-    except:
+    except Exception as e:
+        add_image_exception(image, get_full_class_name(e))
         date = strftime("%Y-%m-%dT%H-%M-%S", gmtime(os.path.getmtime(image)))
     name = path_cleaner("_".join((make, model, date)))
     return (name)
@@ -188,12 +214,16 @@ def list_review(image_list, check_dup, destination, destructive, dry, frame):
     conv_list = {}
     item_count = 0
     dup_count = 0
+    time_run = math.floor(time.time())
+    time_cnt = 0
     item_total = len(image_list)
     for image in image_list:
         # print(image)
         item_count += 1
         percent = math.floor((item_count / item_total) * 100)
-        process_out = (f"Processing: {item_count} of "
+        time_now = math.floor(time.time())
+        time_cnt += 1
+        process_out = (f"Files Processed: {item_count} of "
                        f"{item_total} ({percent}%)\r")
         frame.sts_details.SetLabel(process_out)
         wx.Yield()
@@ -203,7 +233,7 @@ def list_review(image_list, check_dup, destination, destructive, dry, frame):
             dup_val = dup_check2(image, image_content, dup_list)
             if dup_val == 0:
                 # this chunk seems ripe for functionalizing
-                exif_data = exif_parse2(image_content)
+                exif_data = exif_parse2(image_content, image)
                 if exif_data != 1:
                     base_name = name_gen2(image, exif_data)
                     out_name = name_check(base_name, name_bases)
@@ -217,7 +247,7 @@ def list_review(image_list, check_dup, destination, destructive, dry, frame):
                 out_name = f"DUP of {dup_list[dup_val]}"
         else:
             # this chunk is a copy of the last chunk
-            exif_data = exif_parse2(image_content)
+            exif_data = exif_parse2(image_content, image)
             if exif_data != 1:
                 base_name = name_gen2(image, exif_data)
                 out_name = name_check(base_name, name_bases)
@@ -232,6 +262,7 @@ def list_review(image_list, check_dup, destination, destructive, dry, frame):
 
 
 def camera_copy(src, dst, frame, dup=False, destructive=False, dry_run=True):
+    exceptions = {}
     images = image_listing2(src, frame)
     if dry_run:
         dry_name = os.path.join(dst, "camera_copy.csv")
@@ -239,6 +270,35 @@ def camera_copy(src, dst, frame, dup=False, destructive=False, dry_run=True):
             out_file.write(f'"action","source","destination"\n')
     list_counts = list_review(images, dup, dst, destructive, dry_run, frame)
     return (list_counts)
+
+
+class ErrorFrame(wx.Frame):
+    def __init__(self, *args, **kw):
+        # ensure the parent's __init__ is called
+        super(ErrorFrame, self).__init__(*args, **kw)
+        panel = wx.Panel(self)
+        self.sts_details = wx.TextCtrl(panel, -1, "Empty",
+                                       style=wx.TE_READONLY | wx.TE_MULTILINE,
+                                       size=(780, 265))
+        sts_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sts_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, panel, "Details")
+        sts_sizer.Add(self.sts_details, 0, wx.LEFT, 5)
+        errorstr = ("Exceptions were encountered. Please copy the details "
+                    "below to report issues.")
+        errormsg = wx.StaticText(panel, -1, errorstr)
+        btn_cncl = wx.Button(panel, -1, "Exit")
+        btn_cncl.Bind(wx.EVT_BUTTON, self.on_cncl)
+        org_sizer = wx.BoxSizer(wx.VERTICAL)
+        org_sizer.Add(errormsg, 0, wx.ALL, 5)
+        org_sizer.Add(sts_sizer, 0, wx.ALL, 5)
+        org_sizer.Add(btn_cncl, 0, wx.ALL | wx.ALIGN_RIGHT, 5)
+        panel.SetSizer(org_sizer)
+
+    def on_cncl(self, e):
+        self.Close()
+
+    def pass_text(self, err):
+        self.sts_details.SetValue(err)
 
 
 class MainFrame(wx.Frame):
@@ -265,8 +325,8 @@ class MainFrame(wx.Frame):
         self.chk_dest = wx.CheckBox(panel, -1, label="Delete Sources")
         self.chk_dryr = wx.CheckBox(panel, -1, label="Dry Run")
         # status interface
-        # self.sts_box = wx.StaticBox(panel, -1, "Status:", size=(380, 80))
-        self.sts_details = wx.StaticText(panel, -1, "Ready", size=(380, 20))
+        # self.sts_box = wx.StaticBox(panel, -1, "Status", size=(380, 100))
+        self.sts_details = wx.StaticText(panel, -1, "Ready", size=(380, 60))
         # confirmation interfaces
         self.btn_okay = wx.Button(panel, -1, "Copy")
         self.btn_okay.Bind(wx.EVT_BUTTON, self.on_okay)
@@ -290,8 +350,8 @@ class MainFrame(wx.Frame):
         opt_sizer.Add(self.chk_dryr, 0, 0, 0)
         # status_sizer
         sts_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sts_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, panel, "Status:")
-        sts_sizer.Add(self.sts_details, 0, 0, 0)
+        sts_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, panel, "Status")
+        sts_sizer.Add(self.sts_details, 0, wx.LEFT, 5)
         # confirmation sizer
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
         btn_sizer.Add(self.btn_okay, 0, 0, 0)
@@ -353,11 +413,20 @@ class MainFrame(wx.Frame):
                                      destructive, dry_run)
         output = (f'Files Processed: {camera_results[0]}\n'
                   f'Duplicates Skipped: {camera_results[1]}\n'
-                  f'Files "Moved": {camera_results[2]}\n')
-        wx.MessageBox(output, "Results", wx.OK | wx.ICON_INFORMATION)
-        process_out = (f"Processed: {camera_results[0]} of "
+                  f'Files to Move: {camera_results[2]}\n')
+        process_out = (f"Files Processed: {camera_results[0]} of "
                        f"{camera_results[0]} (100%)\r")
-        self.sts_details.SetLabel(process_out)
+        self.sts_details.SetLabel(output)
+        if len(exceptions) > 0:
+            for key in exceptions:
+                exceptions[key]["files"].sort()
+            output = pformat(exceptions)
+            error_frame = ErrorFrame(self, -1, size=(800, 400),
+                                     style=wx.DEFAULT_DIALOG_STYLE)
+            error_frame.pass_text(f"{output}")
+            error_frame.Show()
+            # wx.MessageBox(f"{exceptions}", "Exceptions Encountered",
+            #               wx.OK | wx.ICON_INFORMATION)
         self.toggleUI()
 
     def on_cncl(self, e):
@@ -368,7 +437,14 @@ def main():
     win_title = "Camera Copy GUI"
     win_styles = wx.DEFAULT_DIALOG_STYLE
     app = wx.App(False)
-    frame = MainFrame(None, size=(400, 215), style=win_styles, title=win_title)
+    frame = MainFrame(None, size=(400, 255), style=win_styles, title=win_title)
+    frame.Centre()
+    # this is going to be replaced with some base64 tomfoolery
+    # 1. store the icon as a giant base64 string
+    # 2. decode that to a temp file
+    # 3. read that temp file below
+    # 4. then delete it
+    # for now, no icon.
     # frame.SetIcon(wx.Icon("travellers.ico"))
     frame.Show()
     app.MainLoop()
