@@ -10,7 +10,7 @@ import exif
 import time
 import math
 import wx
-from pprint import pprint
+from pprint import pformat
 
 version = '1.0.3'
 global dry_run
@@ -214,16 +214,15 @@ def list_review(image_list, check_dup, destination, destructive, dry, frame):
     conv_list = {}
     item_count = 0
     dup_count = 0
-    time_run = floor(time.time())
+    time_run = math.floor(time.time())
     time_cnt = 0
     item_total = len(image_list)
     for image in image_list:
         # print(image)
         item_count += 1
         percent = math.floor((item_count / item_total) * 100)
-        time_now = floor(time.time())
+        time_now = math.floor(time.time())
         time_cnt += 1
-        
         process_out = (f"Files Processed: {item_count} of "
                        f"{item_total} ({percent}%)\r")
         frame.sts_details.SetLabel(process_out)
@@ -271,6 +270,35 @@ def camera_copy(src, dst, frame, dup=False, destructive=False, dry_run=True):
             out_file.write(f'"action","source","destination"\n')
     list_counts = list_review(images, dup, dst, destructive, dry_run, frame)
     return (list_counts)
+
+
+class ErrorFrame(wx.Frame):
+    def __init__(self, *args, **kw):
+        # ensure the parent's __init__ is called
+        super(ErrorFrame, self).__init__(*args, **kw)
+        panel = wx.Panel(self)
+        self.sts_details = wx.TextCtrl(panel, -1, "Empty",
+                                       style=wx.TE_READONLY | wx.TE_MULTILINE,
+                                       size=(780, 265))
+        sts_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sts_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, panel, "Details")
+        sts_sizer.Add(self.sts_details, 0, wx.LEFT, 5)
+        errorstr = ("Exceptions were encountered. Please copy the details "
+                    "below to report issues.")
+        errormsg = wx.StaticText(panel, -1, errorstr)
+        btn_cncl = wx.Button(panel, -1, "Exit")
+        btn_cncl.Bind(wx.EVT_BUTTON, self.on_cncl)
+        org_sizer = wx.BoxSizer(wx.VERTICAL)
+        org_sizer.Add(errormsg, 0, wx.ALL, 5)
+        org_sizer.Add(sts_sizer, 0, wx.ALL, 5)
+        org_sizer.Add(btn_cncl, 0, wx.ALL | wx.ALIGN_RIGHT, 5)
+        panel.SetSizer(org_sizer)
+
+    def on_cncl(self, e):
+        self.Close()
+
+    def pass_text(self, err):
+        self.sts_details.SetValue(err)
 
 
 class MainFrame(wx.Frame):
@@ -390,8 +418,15 @@ class MainFrame(wx.Frame):
                        f"{camera_results[0]} (100%)\r")
         self.sts_details.SetLabel(output)
         if len(exceptions) > 0:
-            output = pprint(exceptions)
-            wx.MessageBox(f"{exceptions}", "Exceptions Encountered", wx.OK | wx.ICON_INFORMATION)
+            for key in exceptions:
+                exceptions[key]["files"].sort()
+            output = pformat(exceptions)
+            error_frame = ErrorFrame(self, -1, size=(800, 400),
+                                     style=wx.DEFAULT_DIALOG_STYLE)
+            error_frame.pass_text(f"{output}")
+            error_frame.Show()
+            # wx.MessageBox(f"{exceptions}", "Exceptions Encountered",
+            #               wx.OK | wx.ICON_INFORMATION)
         self.toggleUI()
 
     def on_cncl(self, e):

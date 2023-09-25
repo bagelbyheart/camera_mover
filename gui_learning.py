@@ -17,6 +17,31 @@ def camera_copy(src, dst, dup=False, destructive=False, dry_run=True):
     return (list_counts)
 
 
+class ErrorFrame(wx.Frame):
+    def __init__(self, *args, **kw):
+        # ensure the parent's __init__ is called
+        super(ErrorFrame, self).__init__(*args, **kw)
+        panel = wx.Panel(self)
+        self.sts_details = wx.TextCtrl(panel, -1, "Empty", style=wx.TE_READONLY | wx.TE_MULTILINE, size=(780, 265))
+        sts_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sts_sizer = wx.StaticBoxSizer(wx.HORIZONTAL, panel, "Exception Details")
+        sts_sizer.Add(self.sts_details, 0, wx.LEFT, 5)
+        errormsg = wx.StaticText(panel, -1, "Exceptions were encountered. Please copy the details below to report issues.")
+        btn_cncl = wx.Button(panel, -1, "Exit")
+        btn_cncl.Bind(wx.EVT_BUTTON, self.on_cncl)
+        org_sizer = wx.BoxSizer(wx.VERTICAL)
+        org_sizer.Add(errormsg, 0, wx.ALL, 5)
+        org_sizer.Add(sts_sizer, 0, wx.ALL, 5)
+        org_sizer.Add(btn_cncl, 0, wx.ALL | wx.ALIGN_RIGHT, 5)
+        panel.SetSizer(org_sizer)
+
+    def on_cncl(self, e):
+        self.Close()
+
+    def pass_text(self, str):
+        self.sts_details.SetValue(str)
+
+
 class MainFrame(wx.Frame):
     def __init__(self, *args, **kw):
         # ensure the parent's __init__ is called
@@ -110,11 +135,73 @@ class MainFrame(wx.Frame):
         self.Close()
 
 
+test_output = """
+{'KeyError': {'count': 48,
+              'files': ['Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-09-10T16-06-52_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-09-10T16-06-52_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-09-10T16-06-52_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-13T12-44-34_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-13T12-44-34_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-13T12-44-34_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-14T02-48-54_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-14T02-48-54_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-14T02-48-54_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-14T13-25-50_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-14T13-25-50_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-14T13-25-50_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-14T13-26-10_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-14T13-26-10_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-14T13-26-10_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-17T03-16-24_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-17T03-16-24_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-10-17T03-16-24_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-11-06T00-53-06_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-11-06T00-53-06_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-11-06T00-53-06_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-11-06T16-06-00_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-11-06T16-06-00_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-11-06T16-06-00_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-12T20-57-00_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-12T20-57-00_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-12T20-57-00_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-12T21-54-06_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-12T21-54-06_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-12T21-54-06_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-12T21-54-10_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-12T21-54-10_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-12T21-54-10_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-29T21-54-24_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-29T21-54-24_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2020-12-29T21-54-24_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-01-07T13-46-20_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-01-07T13-46-20_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-01-07T13-46-20_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-01-08T03-42-34_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-01-08T03-42-34_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-01-08T03-42-34_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-01-09T02-30-40_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-01-09T02-30-40_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-01-09T02-30-40_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-02-08T08-43-36_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-02-08T08-43-36_001.jpg',
+                        'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\brand_camera_2021-02-08T08-43-36_001.jpg']},
+ 'plum.exceptions.UnpackError': {'count': 8,
+                                 'files': ['Y:\\BeanMEDIA\\Sorted_Photo_Pass\\bad_exif_2020-10-04T13-35-12_001.jpg',
+                                           'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\bad_exif_2020-10-04T13-35-14_001.jpg',
+                                           'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\bad_exif_2020-10-05T23-23-24_001.jpg',
+                                           'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\bad_exif_2020-10-05T23-23-28_001.jpg',
+                                           'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\bad_exif_2020-10-27T21-14-32_001.jpg',
+                                           'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\bad_exif_2021-02-16T08-30-16_001.jpg',
+                                           'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\bad_exif_2021-03-06T19-25-28_001.jpg',
+                                           'Y:\\BeanMEDIA\\Sorted_Photo_Pass\\bad_exif_2021-03-14T17-05-48_001.jpg']}}
+"""
+
 def main():
     win_title = "Camera Copy GUI"
     win_styles = wx.DEFAULT_DIALOG_STYLE
     app = wx.App()
-    frame = MainFrame(None, size=(400, 170), style=win_styles, title=win_title)
+    frame = ErrorFrame(None, size=(800, 400), style=win_styles, title=win_title)
+    frame.pass_text(test_output)
     frame.Show()
     app.MainLoop()
 
