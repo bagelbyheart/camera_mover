@@ -114,11 +114,29 @@ def add_image_exception(image, exception):
         exceptions[exception]['files'].append(image)
 
 
+example_exception_entry = {
+    'action': '',
+    'target': ''
+}
+
+
+def add_image_exception2(image, exception):
+    entry = {'exc': exception, 'act': '', 'src': image, 'trg': ''}
+    try:
+        exceptions[exception]['count'] += 1
+        exceptions[exception]['entries'].append(entry)
+    except KeyError:
+        exceptions[exception] = {}
+        exceptions[exception]['count'] = 1
+        exceptions[exception]['entries'] = []
+        exceptions[exception]['entries'].append(entry)
+
+
 def exif_parse2(file_content, image):
     try:
         exif_object = exif.Image(file_content)
     except Exception as e:
-        add_image_exception(image, get_full_class_name(e))
+        add_image_exception2(image, get_full_class_name(e))
         return (1)
     if exif_object.has_exif:
         with HiddenPrints():
@@ -132,17 +150,17 @@ def name_gen2(image, exif_dict):
     try:
         make = exif_dict['make']
     except Exception as e:
-        add_image_exception(image, get_full_class_name(e))
+        add_image_exception2(image, get_full_class_name(e))
         make = "brand"
     try:
         model = exif_dict['model']
     except Exception as e:
-        add_image_exception(image, get_full_class_name(e))
+        add_image_exception2(image, get_full_class_name(e))
         model = "camera"
     try:
         date = exif_dict['datetime'].replace(":", "-").replace(" ", "T")
     except Exception as e:
-        add_image_exception(image, get_full_class_name(e))
+        add_image_exception2(image, get_full_class_name(e))
         date = strftime("%Y-%m-%dT%H-%M-%S", gmtime(os.path.getmtime(image)))
     name = path_cleaner("_".join((make, model, date)))
     return (name)
@@ -419,7 +437,7 @@ class MainFrame(wx.Frame):
         self.sts_details.SetLabel(output)
         if len(exceptions) > 0:
             for key in exceptions:
-                exceptions[key]["files"].sort()
+                exceptions[key]["entries"].sort()
             output = pformat(exceptions)
             error_frame = ErrorFrame(self, -1, size=(800, 400),
                                      style=wx.DEFAULT_DIALOG_STYLE)
